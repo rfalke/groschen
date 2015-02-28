@@ -7,6 +7,7 @@ import (
 	"errors"
 	. "groschen"
 	"gopkg.in/alecthomas/kingpin.v1"
+	"fmt"
 )
 
 var (
@@ -66,6 +67,8 @@ func handleOneUrl(prefix string, url string, log LogFunc) {
 	} else {
 		fname := WriteResponseToFile(*outputDir, resp.Body, url)
 		log(LogOther, prefix, "    saved to %s", fname)
+		newUrls := ExtractLinks(url, string(resp.Body))
+		fmt.Printf("Got the following new urls %q\n", newUrls)
 	}
 }
 

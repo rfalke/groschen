@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func reverse(s string) string {
+func Reverse(s string) string {
 	runes := []rune(s)
 	for i, j := 0, len(runes)-1; i < len(runes)/2; i, j = i+1, j-1 {
 		runes[i], runes[j] = runes[j], runes[i]
@@ -14,14 +14,14 @@ func reverse(s string) string {
 }
 
 func FormatIntWithThousandSeparator(v int, sep string) string {
-	tmp := reverse(fmt.Sprintf("%d", v))
+	tmp := Reverse(fmt.Sprintf("%d", v))
 	result := ""
 	for len(tmp) > 3 {
 		result += tmp[0:3] + sep
 		tmp = tmp[3:]
 	}
 	result += tmp
-	return reverse(result)
+	return Reverse(result)
 }
 
 func FormatSpeed(bytes int, duration time.Duration) string {

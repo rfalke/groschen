@@ -7,7 +7,7 @@ fmt:
 	go fmt
 
 test:
-	go test
+	go test -v
 
 run:
 	./groschen.exe -o _out http://www.google.com
