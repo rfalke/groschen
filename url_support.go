@@ -63,7 +63,6 @@ func split_full(url string) *FullUrl {
 }
 
 func split_url(url string) []string {
-	//	fmt.Printf("  split_url(%q)\n", url)
 	decomposed := split_full(url)
 	var result []string = nil
 	if decomposed != nil {
@@ -91,7 +90,7 @@ func split_url(url string) []string {
 func rsplit(s, sep string) (base, tail string) {
 	value := strings.SplitN(Reverse(s), sep, 2)
 	if len(value) != 2 {
-		panic("foobar")
+		panic("foobar s='" + s + "' sep='" + sep + "'")
 	}
 	tail, base_ := value[0], value[1]
 	return Reverse(base_) + "/", Reverse(tail)
@@ -132,6 +131,8 @@ func replace_dot_at_end(url string) string {
 }
 
 func MakeLinkAbsolute(baseUrl string, url string) string {
+	baseUrl = strings.TrimSpace(baseUrl)
+	url = strings.TrimSpace(url)
 	//	fmt.Printf("MakeLinkAbsolute(base='%s', url='%s')\n", baseUrl, url)
 	tmp := split_url(baseUrl)
 	urlType, host, path, _ := tmp[0], tmp[1], tmp[2], tmp[3]

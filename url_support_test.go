@@ -38,6 +38,7 @@ func TestMakeLinkAbsolute(t *testing.T) {
 	Assert(t).That(MakeLinkAbsolute(base, "../.."), Equals("http://www.example.com"))
 
 	Assert(t).That(MakeLinkAbsolute("http://www.example.com", "../.."), Equals("http://www.example.com"))
+	Assert(t).That(MakeLinkAbsolute("http://www.example.com ", "abc"), Equals("http://www.example.com/abc"))
 }
 
 func TestSupportedUrl(t *testing.T) {
