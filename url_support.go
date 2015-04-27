@@ -113,7 +113,9 @@ func removeDotSegmentsInPath(path string) string {
 	for _, part := range strings.Split(path, "/") {
 		if part != "." {
 			if part == ".." {
-				result = result[:len(result)-1]
+				if len(result) > 0 {
+					result = result[:len(result)-1]
+				}
 			} else {
 				result = append(result, part)
 			}

@@ -25,6 +25,19 @@ func TestMakeLinkAbsolute(t *testing.T) {
 
 	Assert(t).That(MakeLinkAbsolute(base, "/a/b/c/./../../g?foo=.."), Equals("http://www.example.com/a/g?foo=.."))
 	Assert(t).That(MakeLinkAbsolute(base, "mid/content=5/../6"), Equals("http://www.example.com/abc/mid/6"))
+
+	Assert(t).That(MakeLinkAbsolute(base, "/foo/bar/.."), Equals("http://www.example.com/foo"))
+	Assert(t).That(MakeLinkAbsolute(base, "/foo/bar/../.."), Equals("http://www.example.com"))
+
+	Assert(t).That(MakeLinkAbsolute(base, "foo/bar/.."), Equals("http://www.example.com/abc/foo"))
+	Assert(t).That(MakeLinkAbsolute(base, "foo/bar/../.."), Equals("http://www.example.com/abc"))
+	Assert(t).That(MakeLinkAbsolute(base, "foo/bar/../../.."), Equals("http://www.example.com"))
+	Assert(t).That(MakeLinkAbsolute(base, "foo/bar/../../../.."), Equals("http://www.example.com"))
+	Assert(t).That(MakeLinkAbsolute(base, "foo/.."), Equals("http://www.example.com/abc"))
+	Assert(t).That(MakeLinkAbsolute(base, ".."), Equals("http://www.example.com"))
+	Assert(t).That(MakeLinkAbsolute(base, "../.."), Equals("http://www.example.com"))
+
+	Assert(t).That(MakeLinkAbsolute("http://www.example.com", "../.."), Equals("http://www.example.com"))
 }
 
 func TestSupportedUrl(t *testing.T) {
