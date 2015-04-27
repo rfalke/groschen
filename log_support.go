@@ -45,7 +45,9 @@ const (
 type LogFunc func(logType int, prefix string, format string, args ...interface{})
 
 func SeqLog(logType int, prefix string, format string, args ...interface{}) {
-	fmt.Printf("%s: ", prefix)
+	if prefix != "" {
+		fmt.Printf("%s: ", prefix)
+	}
 	fmt.Printf(format, args...)
 	fmt.Println()
 }

@@ -59,16 +59,41 @@ func request(url string, timeoutInSec int) (*MyResponse, error) {
 	return result, nil
 }
 
-func handleOneUrl(prefix string, url string, log LogFunc) {
+func handleOneUrl(prefix string, url string, log LogFunc, allNewUrls map[string]bool) {
 	TotalTries := 5
-	resp, err := downloadWithRetry(url, 1, TotalTries, "test-prefix", log)
+	resp, err := downloadWithRetry(url, 1, TotalTries, prefix, log)
 	if err != nil {
 		log(LogOther, prefix, "    *** failed to download '%s'", url)
 	} else {
 		fname := WriteResponseToFile(*outputDir, resp.Body, url)
 		log(LogOther, prefix, "    saved to %s", fname)
 		newUrls := ExtractLinks(url, string(resp.Body))
-		fmt.Printf("Got the following new urls %q\n", newUrls)
+		AddListToMap(newUrls, allNewUrls)
+	}
+}
+
+func doOneBatchSequential(todos map[string]bool) map[string]bool{
+	var newUrls = make(map[string]bool, 0)
+	var counter=0
+	for url, _ := range todos {
+		handleOneUrl(fmt.Sprintf("  %d/%d", counter, len(todos)), url, SeqLog, newUrls)
+		counter++
+	}
+	return newUrls
+}
+
+func driver(todos map[string]bool, done map[string]bool) {
+	var batchNumber = -1
+	for {
+		batchNumber++
+		var filteredTodo = NewFromFilter(todos, func(value string)bool {_, ok := done[value]; return !ok})
+		if (len(filteredTodo) == 0) {
+			break;
+		}
+		SeqLog(LogOther, "", "driver: start batch %d with %d urls (%d urls already done)",batchNumber, len(filteredTodo), len(done))
+		var newUrls = doOneBatchSequential(filteredTodo)
+		AddMapToMap(filteredTodo, done)
+		todos = newUrls
 	}
 }
 
@@ -76,5 +101,7 @@ func main() {
 	kingpin.Version("0.0.1")
 	kingpin.Parse()
 
-	handleOneUrl("test-prefix", *seedUrl, SeqLog)
+	var todo = make(map[string]bool, 0)
+	todo[*seedUrl] = true
+	driver(todo, make(map[string]bool, 0))
 }
