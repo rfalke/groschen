@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"sync"
 	"runtime"
+	"strings"
+	"regexp"
 )
 
 var (
@@ -19,6 +21,7 @@ var (
 	restrictSameDir     = kingpin.Flag("r1", "limit recursive download to the sub directory of the initial URL").Bool()
 	restrictSameHost    = kingpin.Flag("r2", "limit recursive download to host of the initial URL").Bool()
 	restrictNone        = kingpin.Flag("r3", "do not limit the recursive download").Bool()
+	includePattern      = kingpin.Flag("include", "only visit urls which match PATTERNS. PATTERNS consists of a delimeter char (which is the comma) and a list of positive and negative patterns separated by the delimter char. The url is matched against each pattern and the first match decided (i.e. the url is accepted or rejected). Empty parts mean no match.").Short('i').String()
 )
 
 type MyResponse struct {
@@ -87,11 +90,30 @@ func handleOneUrl(prefix string, url string, log LogFunc, allNewUrls map[string]
 func filterUrls(urls []string) []string {
 	result := make([]string, 0)
 	for _, link := range urls {
-		if is_acceptable_by_restrictions(*seedUrl, link) {
+		if is_acceptable_by_restrictions(*seedUrl, link) && is_acceptable_by_include_pattern(link) {
 			result = append(result, link)
 		}
 	}
 	return result
+}
+
+func is_acceptable_by_include_pattern(link string) bool {
+	if *includePattern != "" {
+		var sep = (*includePattern)[0:1]
+		var parts = strings.Split((*includePattern)[1:], regexp.QuoteMeta(sep))
+		var accept = true
+		for _, part := range parts {
+			if part != "" {
+				if regexp.MustCompile(part).FindStringIndex(link) != nil {
+					return accept
+				}
+			}
+			accept = !accept
+		}
+		return accept
+	} else {
+		return true
+	}
 }
 
 func is_acceptable_by_restrictions(startlink string, link string) bool {
