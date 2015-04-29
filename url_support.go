@@ -2,6 +2,8 @@ package groschen
 
 import (
 	"errors"
+	"fmt"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -138,9 +140,9 @@ func replace_dot_at_end(url string) string {
 	return url
 }
 
-func MakeLinkAbsolute(baseUrl string, url string) string {
+func MakeLinkAbsolute(baseUrl string, origUrl string) string {
 	baseUrl = strings.TrimSpace(baseUrl)
-	url = strings.TrimSpace(url)
+	var url = strings.TrimSpace(origUrl)
 	//	fmt.Printf("MakeLinkAbsolute(base='%s', url='%s')\n", baseUrl, url)
 	tmp := split_url(baseUrl)
 	urlType, host, path, _ := tmp[0], tmp[1], tmp[2], tmp[3]
@@ -162,6 +164,11 @@ func MakeLinkAbsolute(baseUrl string, url string) string {
 		panic("foobar")
 	}
 	result = normalize_url(result)
+	// verify
+	if split_full(result) == nil {
+		fmt.Printf("Warning: Failed to make link absolute (" + baseUrl + ", " + origUrl + ") got " + result)
+		result = baseUrl
+	}
 	//	fmt.Printf("MakeLinkAbsolute  = '%s'\n", result)
 	return result
 }
@@ -172,4 +179,23 @@ func get_proto(url string) string {
 
 func IsFullUrl(url string) bool {
 	return split_url(url) != nil
+}
+
+func IsSameHost(base string, url string) bool {
+	u1 := split_full(base)
+	u2 := split_full(url)
+	return u1.proto+u1.host+u1.port == u2.proto+u2.host+u2.port
+}
+
+func IsInSubdir(base string, url string) bool {
+	u1 := split_full(base)
+	u2 := split_full(url)
+	var basePath = u1.proto + u1.host + u1.port + dirName(u1.path)
+	var otherPath = u2.proto + u2.host + u2.port + dirName(u2.path)
+	return strings.HasPrefix(otherPath, basePath)
+}
+
+func dirName(pathName string) string {
+	result, _ := path.Split(pathName)
+	return result
 }

@@ -10,7 +10,7 @@ test:
 	go test -v
 
 run:
-	./groschen.exe -o _out http://www.google.com
+	./groschen.exe --r3 -o _out http://www.google.com
 
 clean:
 	rm -f groschen.exe *~

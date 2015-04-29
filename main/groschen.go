@@ -16,6 +16,9 @@ var (
 	outputDir           = kingpin.Flag("output-dir", "set the output directory.").Default(".").Short('o').String()
 	seedUrl             = kingpin.Arg("url", "the start url").Required().String()
 	parallelConnections = kingpin.Flag("connections", "number of parallel connections").Default("20").Short('c').Int()
+	restrictSameDir     = kingpin.Flag("r1", "limit recursive download to the sub directory of the initial URL").Bool()
+	restrictSameHost    = kingpin.Flag("r2", "limit recursive download to host of the initial URL").Bool()
+	restrictNone        = kingpin.Flag("r3", "do not limit the recursive download").Bool()
 )
 
 type MyResponse struct {
@@ -84,11 +87,24 @@ func handleOneUrl(prefix string, url string, log LogFunc, allNewUrls map[string]
 func filterUrls(urls []string) []string {
 	result := make([]string, 0)
 	for _, link := range urls {
-		if true {
+		if is_acceptable_by_restrictions(*seedUrl, link) {
 			result = append(result, link)
 		}
 	}
 	return result
+}
+
+func is_acceptable_by_restrictions(startlink string, link string) bool {
+	if *restrictNone {
+		return true
+	} else if *restrictSameHost {
+		return IsSameHost(link, startlink)
+	} else if *restrictSameDir {
+		return IsInSubdir(link, startlink)
+	} else {
+		// no recursion
+		return false
+	}
 }
 
 func doOneBatchSequential(todos map[string]bool) map[string]bool {
@@ -155,12 +171,33 @@ func driver(todos map[string]bool, done map[string]bool) {
 	}
 }
 
+func validateOptions() bool {
+	var numRestrictions = 0
+
+	if *restrictSameDir {
+		numRestrictions++
+	}
+	if *restrictSameHost {
+		numRestrictions++
+	}
+	if *restrictNone {
+		numRestrictions++
+	}
+	if numRestrictions > 1 {
+		fmt.Println("Either give --r1, --r2 or --r3.")
+		return false
+	}
+	return true
+}
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU() + 2)
 	kingpin.Version("0.0.1")
 	kingpin.Parse()
 
-	var todo = make(map[string]bool, 0)
-	todo[*seedUrl] = true
-	driver(todo, make(map[string]bool, 0))
+	if validateOptions() {
+		var todo = make(map[string]bool, 0)
+		todo[*seedUrl] = true
+		driver(todo, make(map[string]bool, 0))
+	}
 }
