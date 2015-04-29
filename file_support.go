@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 )
 
 const (
@@ -63,7 +64,12 @@ func ensure_dir(dir string) {
 	}
 }
 
+var fileLock sync.Mutex
+
 func WriteResponseToFile(basePath string, content []byte, theUrl string) string {
+	fileLock.Lock()
+	defer fileLock.Unlock()
+
 	u, err := url.Parse(theUrl)
 	if err != nil {
 		log.Fatal(err)

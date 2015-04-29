@@ -8,11 +8,14 @@ import (
 	. "groschen"
 	"gopkg.in/alecthomas/kingpin.v1"
 	"fmt"
+	"sync"
+	"runtime"
 )
 
 var (
-	outputDir = kingpin.Flag("output-dir", "set the output directory.").Default(".").Short('o').String()
-	seedUrl   = kingpin.Arg("url", "the start url").Required().String()
+	outputDir           = kingpin.Flag("output-dir", "set the output directory.").Default(".").Short('o').String()
+	seedUrl             = kingpin.Arg("url", "the start url").Required().String()
+	parallelConnections = kingpin.Flag("connections", "number of parallel connections").Default("20").Short('c').Int()
 )
 
 type MyResponse struct {
@@ -59,6 +62,8 @@ func request(url string, timeoutInSec int) (*MyResponse, error) {
 	return result, nil
 }
 
+var allNewUrlsLock sync.Mutex
+
 func handleOneUrl(prefix string, url string, log LogFunc, allNewUrls map[string]bool) {
 	TotalTries := 5
 	resp, err := downloadWithRetry(url, 1, TotalTries, prefix, log)
@@ -68,16 +73,64 @@ func handleOneUrl(prefix string, url string, log LogFunc, allNewUrls map[string]
 		fname := WriteResponseToFile(*outputDir, resp.Body, url)
 		log(LogOther, prefix, "    saved to %s", fname)
 		newUrls := ExtractLinks(url, string(resp.Body))
-		AddListToMap(newUrls, allNewUrls)
+		var filteredNewUrls = filterUrls(newUrls)
+
+		allNewUrlsLock.Lock()
+		defer allNewUrlsLock.Unlock()
+		AddListToMap(filteredNewUrls, allNewUrls)
 	}
 }
 
-func doOneBatchSequential(todos map[string]bool) map[string]bool{
+func filterUrls(urls []string) []string {
+	result := make([]string, 0)
+	for _, link := range urls {
+		if true {
+			result = append(result, link)
+		}
+	}
+	return result
+}
+
+func doOneBatchSequential(todos map[string]bool) map[string]bool {
 	var newUrls = make(map[string]bool, 0)
-	var counter=0
+	var counter = 0
 	for url, _ := range todos {
 		handleOneUrl(fmt.Sprintf("  %d/%d", counter, len(todos)), url, SeqLog, newUrls)
 		counter++
+	}
+	return newUrls
+}
+
+func releaseSlot(finishedChan chan bool) {
+	finishedChan <- true
+}
+
+func doOneBatchParallel(todos map[string]bool, parallelDownloads int) map[string]bool {
+	var finishedChan = make(chan bool)
+	var openSlots = parallelDownloads
+	var newUrls = make(map[string]bool, 0)
+	var todosAsSlice = SliceFromMapKeys(todos)
+	var nextIndex = 0
+	var finished = false
+	for {
+		for {
+			if (openSlots > 0 && !finished) {
+				go func(index int, url string) {
+					defer releaseSlot(finishedChan)
+					handleOneUrl(fmt.Sprintf("  %d/%d", index, len(todos)), url, SeqLog, newUrls)
+				}(nextIndex, todosAsSlice[nextIndex]);
+				nextIndex++
+				openSlots--
+				finished = nextIndex >= len(todosAsSlice)
+			} else {
+				break
+			}
+		}
+		<-finishedChan
+		openSlots++
+		if openSlots == parallelDownloads && finished {
+			break
+		}
 	}
 	return newUrls
 }
@@ -86,18 +139,24 @@ func driver(todos map[string]bool, done map[string]bool) {
 	var batchNumber = -1
 	for {
 		batchNumber++
-		var filteredTodo = NewFromFilter(todos, func(value string)bool {_, ok := done[value]; return !ok})
+		var filteredTodo = NewFromFilter(todos, func(value string) bool {_, ok := done[value]; return !ok})
 		if (len(filteredTodo) == 0) {
 			break;
 		}
-		SeqLog(LogOther, "", "driver: start batch %d with %d urls (%d urls already done)",batchNumber, len(filteredTodo), len(done))
-		var newUrls = doOneBatchSequential(filteredTodo)
+		SeqLog(LogOther, "", "driver: start batch %d with %d urls (%d urls already done)", batchNumber, len(filteredTodo), len(done))
+		var newUrls map[string]bool
+		if *parallelConnections <= 1 {
+			newUrls = doOneBatchSequential(filteredTodo)
+		} else {
+			newUrls = doOneBatchParallel(filteredTodo, *parallelConnections)
+		}
 		AddMapToMap(filteredTodo, done)
 		todos = newUrls
 	}
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU() + 2)
 	kingpin.Version("0.0.1")
 	kingpin.Parse()
 

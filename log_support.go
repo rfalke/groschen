@@ -2,6 +2,7 @@ package groschen
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -44,7 +45,11 @@ const (
 
 type LogFunc func(logType int, prefix string, format string, args ...interface{})
 
+var logLock sync.Mutex
+
 func SeqLog(logType int, prefix string, format string, args ...interface{}) {
+	logLock.Lock()
+	defer logLock.Unlock()
 	if prefix != "" {
 		fmt.Printf("%s: ", prefix)
 	}

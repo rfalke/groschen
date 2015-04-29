@@ -25,3 +25,14 @@ func NewFromFilter(source map[string]bool, test Predicate) map[string]bool {
 	}
 	return result
 }
+
+func SliceFromMapKeys(source map[string]bool) []string {
+	result := make([]string, len(source))
+
+	i := 0
+	for k := range source {
+		result[i] = k
+		i += 1
+	}
+	return result
+}
