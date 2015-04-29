@@ -1,6 +1,7 @@
 package groschen
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 )
@@ -52,6 +53,10 @@ func split_full(url string) *FullUrl {
 	if Path == "" {
 		Path = "/"
 	}
+	// The url is invalid but has a protocol. We return !=nil to indicate an absolute url. The path has to be corrected.
+	if !strings.HasPrefix(Path, "/") {
+		Path = "/" + Path
+	}
 	r := new(FullUrl)
 	r.proto = Proto
 	r.host = Host
@@ -66,7 +71,10 @@ func split_url(url string) []string {
 	decomposed := split_full(url)
 	var result []string = nil
 	if decomposed != nil {
-		Path, Name := rsplit(decomposed.path, "/")
+		Path, Name, err := rsplit(decomposed.path, "/")
+		if err != nil {
+			panic("The path part (" + decomposed.path + ") of '" + url + "' does not contain a slash.")
+		}
 		result = []string{"full", decomposed.proto + decomposed.host + decomposed.port, Path, Name + decomposed.query}
 	} else {
 		if strings.HasPrefix(url, "//") {
@@ -87,13 +95,13 @@ func split_url(url string) []string {
 	return result
 }
 
-func rsplit(s, sep string) (base, tail string) {
+func rsplit(s, sep string) (base, tail string, err error) {
 	value := strings.SplitN(Reverse(s), sep, 2)
 	if len(value) != 2 {
-		panic("foobar s='" + s + "' sep='" + sep + "'")
+		return "", "", errors.New("Failed to find '" + sep + "' in '" + s + "'")
 	}
 	tail, base_ := value[0], value[1]
-	return Reverse(base_) + "/", Reverse(tail)
+	return Reverse(base_) + "/", Reverse(tail), nil
 }
 
 func normalize_url(url string) string {

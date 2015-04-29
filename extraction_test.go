@@ -11,8 +11,12 @@ func TestExtraction(t *testing.T) {
 		ContainsExactly("http://www.example.com/abc/link1", "http://www.example.com/background.png", "http://www.foobar.com/pixel.gif"))
 	Assert(t).ThatStringSlice(ExtractLinks("http://www.example.com/abc/dec", "HREF=\"link1\" href=\"link1\""),
 		ContainsExactly("http://www.example.com/abc/link1"))
+	Assert(t).ThatStringSlice(ExtractLinks("http://www.example.com/abc/dec", "some href=\"http://some.doman.com\" text"),
+		ContainsExactly("http://some.doman.com/"))
 	Assert(t).ThatStringSlice(ExtractLinks("http://www.example.com/abc/dec", "href=\"mailto:foo@bar.com\""), IsEmpty())
 	Assert(t).ThatStringSlice(ExtractLinks("http://www.example.com/abc/dec", "href=\"javascript:void(0)\""), IsEmpty())
 	Assert(t).ThatStringSlice(ExtractLinks("http://www.example.com/abc/dec", "href=\"#\""), IsEmpty())
 	Assert(t).ThatStringSlice(ExtractLinks("http://www.example.com/abc/dec", "some text hr_ef=\"link1\""), IsEmpty())
+	//	This is an invalid source href. The result is there but mangled.
+	Assert(t).ThatStringSlice(ExtractLinks("http://www.example.com/abc/dec", "some href=\"http://ab and cd\" text"), ContainsExactly("http://ab/ and cd"))
 }
