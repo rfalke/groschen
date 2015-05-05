@@ -1,18 +1,26 @@
-all: fmt test build run
+all: ensure-deps fmt test build run
 
+ensure-deps: dependencies/src/gopkg.in/alecthomas/kingpin.v1/app.go
+
+dependencies/src/gopkg.in/alecthomas/kingpin.v1/app.go:
+	mkdir -p dependencies
+	export GOPATH=$$(pwd)/dependencies ; cd dependencies && go get gopkg.in/alecthomas/kingpin.v1
+	
 build:
-	go build -o groschen.exe main/groschen.go
+	export GOPATH=$$(pwd)/dependencies:$$(pwd) ; cd src/groschen ; go build -o groschen.exe main/groschen.go
 
 fmt:
-	go fmt
+	export GOPATH=$$(pwd)/dependencies:$$(pwd) ; cd src/groschen ; go fmt
 
 test:
-	go test -v
+	export GOPATH=$$(pwd)/dependencies:$$(pwd) ; cd src/groschen ; go test -v
 
 run:
-	./groschen.exe --r3 -o _out http://www.google.com
+	./src/groschen/groschen.exe --r3 -o _out http://www.google.com
 
 clean:
-	rm -f groschen.exe *~
+	rm -f src/groschen/groschen.exe src/groschen/*~
 	rm -rf _out
 
+mrproper: clean
+	rm -rf dependencies
